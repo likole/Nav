@@ -27,6 +27,7 @@ import com.baidu.tts.client.SpeechSynthesizer;
 import com.baidu.tts.client.SpeechSynthesizerListener;
 import com.baidu.tts.client.SynthesizerTool;
 import com.baidu.tts.client.TtsMode;
+import com.slamtec.slamware.AbstractSlamwarePlatform;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -58,6 +59,7 @@ public class NavActivity extends AppCompatActivity {
     private Button btn_chart;
     private TextView tv_log;
 
+    private AbstractSlamwarePlatform slamwarePlatform;
 
     //-----语音合成-----
     private SpeechSynthesizer mSpeechSynthesizer;
@@ -85,13 +87,21 @@ public class NavActivity extends AppCompatActivity {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             requestPermissions(new String[]{
                     Manifest.permission.RECORD_AUDIO
-            }, 1); // requestPermissions是Activity的方法
+            }, 1);
         }
 
         btn = (Button) findViewById(R.id.button);
         btn_chart = (Button) findViewById(R.id.button_chart);
         tv_log = (TextView) findViewById(R.id.textView);
 
+        //连接小车
+        try{
+            //slamwarePlatform = DeviceManager.connect("192.168.11.1", 1445);
+           // slamwarePlatform.setSystemParameter(SYSPARAM_ROBOT_SPEED,SYSVAL_ROBOT_SPEED_HIGH);
+        }catch (Exception e)
+        {
+            tv_log.setText("无法连接到小车");
+        }
 
         //-----语音合成-----
         initialEnv();
@@ -240,7 +250,7 @@ public class NavActivity extends AppCompatActivity {
             JSONObject result = (JSONObject) json_res.getJSONArray("results").get(0);
 
             tv_log.setText(tv_log.getText() + "\n\n" + result.getJSONObject("object").getString("arrival"));
-            speak("即将前往"+result.getJSONObject("object").getString("arrival"));
+            speak("即将前往" + result.getJSONObject("object").getString("arrival"));
         } catch (JSONException e) {
             e.printStackTrace();
         }
@@ -322,6 +332,8 @@ public class NavActivity extends AppCompatActivity {
             ArrayList<String> nbest = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
             print("识别成功：" + Arrays.toString(nbest.toArray(new String[nbest.size()])));
             String json_res = results.getString("origin_result");
+            if(json_res.contains("进入聊天模式")) NavActivity.this.finish();
+
             try {
                 print("origin_result=\n" + new JSONObject(json_res).toString(4));
                 printRs(json_res);
@@ -355,9 +367,16 @@ public class NavActivity extends AppCompatActivity {
 
     }
 
+
+    //====================
+    // 上面应该是..语音识别吧= =
+    //=====================
+
+
     //====================
     //以下为语音合成的东东= =
     //=====================
+
 
     private void initialEnv() {
         if (mSampleDirPath == null) {
@@ -495,7 +514,6 @@ public class NavActivity extends AppCompatActivity {
     }
 
 
-
     private SpeechSynthesizeBag getSpeechSynthesizeBag(String text, String utteranceId) {
         SpeechSynthesizeBag speechSynthesizeBag = new SpeechSynthesizeBag();
         //需要合成的文本text的长度不能超过1024个GBK字节。
@@ -504,84 +522,88 @@ public class NavActivity extends AppCompatActivity {
         return speechSynthesizeBag;
     }
 
-     class mySpeechSynthesizerListener implements SpeechSynthesizerListener{
-         /*
-      * @param arg0
-      */
-         @Override
-         public void onSynthesizeStart(String utteranceId) {
-             toPrint("onSynthesizeStart utteranceId=" + utteranceId);
-         }
+    class mySpeechSynthesizerListener implements SpeechSynthesizerListener {
+        /*
+     * @param arg0
+     */
+        @Override
+        public void onSynthesizeStart(String utteranceId) {
+            toPrint("onSynthesizeStart utteranceId=" + utteranceId);
+        }
 
-         /**
-          * 合成数据和进度的回调接口，分多次回调
-          *
-          * @param utteranceId
-          * @param data 合成的音频数据。该音频数据是采样率为16K，2字节精度，单声道的pcm数据。
-          * @param progress 文本按字符划分的进度，比如:你好啊 进度是0-3
-          */
-         @Override
-         public void onSynthesizeDataArrived(String utteranceId, byte[] data, int progress) {
-             // toPrint("onSynthesizeDataArrived");
-         }
+        /**
+         * 合成数据和进度的回调接口，分多次回调
+         *
+         * @param utteranceId
+         * @param data        合成的音频数据。该音频数据是采样率为16K，2字节精度，单声道的pcm数据。
+         * @param progress    文本按字符划分的进度，比如:你好啊 进度是0-3
+         */
+        @Override
+        public void onSynthesizeDataArrived(String utteranceId, byte[] data, int progress) {
+            // toPrint("onSynthesizeDataArrived");
+        }
 
-         /**
-          * 合成正常结束，每句合成正常结束都会回调，如果过程中出错，则回调onError，不再回调此接口
-          *
-          * @param utteranceId
-          */
-         @Override
-         public void onSynthesizeFinish(String utteranceId) {
-             toPrint("onSynthesizeFinish utteranceId=" + utteranceId);
-         }
+        /**
+         * 合成正常结束，每句合成正常结束都会回调，如果过程中出错，则回调onError，不再回调此接口
+         *
+         * @param utteranceId
+         */
+        @Override
+        public void onSynthesizeFinish(String utteranceId) {
+            toPrint("onSynthesizeFinish utteranceId=" + utteranceId);
+        }
 
-         /**
-          * 播放开始，每句播放开始都会回调
-          *
-          * @param utteranceId
-          */
-         @Override
-         public void onSpeechStart(String utteranceId) {
-             toPrint("onSpeechStart utteranceId=" + utteranceId);
-         }
+        /**
+         * 播放开始，每句播放开始都会回调
+         *
+         * @param utteranceId
+         */
+        @Override
+        public void onSpeechStart(String utteranceId) {
+            toPrint("onSpeechStart utteranceId=" + utteranceId);
+        }
 
-         /**
-          * 播放进度回调接口，分多次回调
-          *
-          * @param utteranceId
-          * @param progress 文本按字符划分的进度，比如:你好啊 进度是0-3
-          */
-         @Override
-         public void onSpeechProgressChanged(String utteranceId, int progress) {
-             // toPrint("onSpeechProgressChanged");
+        /**
+         * 播放进度回调接口，分多次回调
+         *
+         * @param utteranceId
+         * @param progress    文本按字符划分的进度，比如:你好啊 进度是0-3
+         */
+        @Override
+        public void onSpeechProgressChanged(String utteranceId, int progress) {
+            // toPrint("onSpeechProgressChanged");
             // mHandler.sendMessage(mHandler.obtainMessage(UI_CHANGE_INPUT_TEXT_SELECTION, progress, 0));
-         }
+        }
 
-         /**
-          * 播放正常结束，每句播放正常结束都会回调，如果过程中出错，则回调onError,不再回调此接口
-          *
-          * @param utteranceId
-          */
-         @Override
-         public void onSpeechFinish(String utteranceId) {
-             toPrint("onSpeechFinish utteranceId=" + utteranceId);
-         }
+        /**
+         * 播放正常结束，每句播放正常结束都会回调，如果过程中出错，则回调onError,不再回调此接口
+         *
+         * @param utteranceId
+         */
+        @Override
+        public void onSpeechFinish(String utteranceId) {
+            toPrint("onSpeechFinish utteranceId=" + utteranceId);
+        }
 
-         /**
-          * 当合成或者播放过程中出错时回调此接口
-          *
-          * @param utteranceId
-          * @param error 包含错误码和错误信息
-          */
-         @Override
-         public void onError(String utteranceId, SpeechError error) {
-             toPrint("onError error=" + "(" + error.code + ")" + error.description + "--utteranceId=" + utteranceId);
-         }
+        /**
+         * 当合成或者播放过程中出错时回调此接口
+         *
+         * @param utteranceId
+         * @param error       包含错误码和错误信息
+         */
+        @Override
+        public void onError(String utteranceId, SpeechError error) {
+            toPrint("onError error=" + "(" + error.code + ")" + error.description + "--utteranceId=" + utteranceId);
+        }
     }
 
 
-    private void toPrint(String s){
+    private void toPrint(String s) {
         System.out.println(s);
     }
 
+
+    //====================
+    //上面的是语音合成部分
+    //=====================
 }

@@ -71,4 +71,5 @@ dependencies {
     // debugCompile 'com.squareup.leakcanary:leakcanary-android:1.3'
     compile files('libs/VoiceRecognition-2.1.20.jar')
     compile files('libs/com.baidu.tts_2.3.0.jar')
+    compile files('libs/slamware_sdk_android.jar')
 }
