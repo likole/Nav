@@ -15,12 +15,11 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
 
-import com.baidu.duer.dcs.R;
+import com.baidu.duer.dcs.androidapp.DcsSampleMainActivity;
 import com.baidu.speech.EventListener;
 import com.baidu.speech.EventManager;
 import com.baidu.speech.EventManagerFactory;
 import com.baidu.speech.VoiceRecognitionService;
-import com.baidu.tts.auth.AuthInfo;
 import com.baidu.tts.client.SpeechError;
 import com.baidu.tts.client.SpeechSynthesizeBag;
 import com.baidu.tts.client.SpeechSynthesizer;
@@ -28,6 +27,8 @@ import com.baidu.tts.client.SpeechSynthesizerListener;
 import com.baidu.tts.client.SynthesizerTool;
 import com.baidu.tts.client.TtsMode;
 import com.slamtec.slamware.AbstractSlamwarePlatform;
+import com.slamtec.slamware.action.MoveDirection;
+import com.slamtec.slamware.discovery.DeviceManager;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -40,6 +41,9 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+
+import static com.slamtec.slamware.robot.SystemParameters.SYSPARAM_ROBOT_SPEED;
+import static com.slamtec.slamware.robot.SystemParameters.SYSVAL_ROBOT_SPEED_HIGH;
 
 public class NavActivity extends AppCompatActivity {
 
@@ -72,10 +76,6 @@ public class NavActivity extends AppCompatActivity {
     private static final String ENGLISH_SPEECH_FEMALE_MODEL_NAME = "bd_etts_speech_female_en.dat";
     private static final String ENGLISH_SPEECH_MALE_MODEL_NAME = "bd_etts_speech_male_en.dat";
     private static final String ENGLISH_TEXT_MODEL_NAME = "bd_etts_text_en.dat";
-
-    private static final int PRINT = 0;
-    private static final int UI_CHANGE_INPUT_TEXT_SELECTION = 1;
-    private static final int UI_CHANGE_SYNTHES_TEXT_SELECTION = 2;
     //-----语音合成-----
 
 
@@ -90,24 +90,20 @@ public class NavActivity extends AppCompatActivity {
             }, 1);
         }
 
+        print("权限请求完成");
+
         btn = (Button) findViewById(R.id.button);
         btn_chart = (Button) findViewById(R.id.button_chart);
         tv_log = (TextView) findViewById(R.id.textView);
 
-        //连接小车
-        try{
-            //slamwarePlatform = DeviceManager.connect("192.168.11.1", 1445);
-           // slamwarePlatform.setSystemParameter(SYSPARAM_ROBOT_SPEED,SYSVAL_ROBOT_SPEED_HIGH);
-        }catch (Exception e)
-        {
-            tv_log.setText("无法连接到小车");
-        }
+        print("界面绑定完成");
 
         //-----语音合成-----
         initialEnv();
         initialTts();
         //-----语音合成-----
 
+        print("语音合成OK");
 
         speechRecognizer = SpeechRecognizer.createSpeechRecognizer(this, new ComponentName(this, VoiceRecognitionService.class));
 
@@ -145,12 +141,39 @@ public class NavActivity extends AppCompatActivity {
             }
         });
 
+        print("语音识别OK");
+
         btn_chart.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 finish();
             }
         });
+
+        print("模式切换OK");
+
+        //连接小车
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    slamwarePlatform = DeviceManager.connect("172.16.42.54", 1445);
+                    slamwarePlatform.setSystemParameter(SYSPARAM_ROBOT_SPEED, SYSVAL_ROBOT_SPEED_HIGH);
+                    SocketThread socketThread=new SocketThread(slamwarePlatform);
+                    socketThread.start();
+                } catch (Exception e) {
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            tv_log.setText("无法连接到小车");
+                        }
+                    });
+                }
+            }
+        }).start();
+
+        print("启动小车OK");
+
     }
 
     @Override
@@ -251,6 +274,7 @@ public class NavActivity extends AppCompatActivity {
 
             tv_log.setText(tv_log.getText() + "\n\n" + result.getJSONObject("object").getString("arrival"));
             speak("即将前往" + result.getJSONObject("object").getString("arrival"));
+            slamwarePlatform.moveBy(MoveDirection.FORWARD);
         } catch (JSONException e) {
             e.printStackTrace();
         }
@@ -332,7 +356,12 @@ public class NavActivity extends AppCompatActivity {
             ArrayList<String> nbest = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
             print("识别成功：" + Arrays.toString(nbest.toArray(new String[nbest.size()])));
             String json_res = results.getString("origin_result");
-            if(json_res.contains("进入聊天模式")) NavActivity.this.finish();
+            if (json_res.contains("进入聊天模式"))
+            {
+                Intent intent=new Intent(NavActivity.this, DcsSampleMainActivity.class);
+                startActivity(intent);
+                finish();
+            }
 
             try {
                 print("origin_result=\n" + new JSONObject(json_res).toString(4));
@@ -451,46 +480,43 @@ public class NavActivity extends AppCompatActivity {
         this.mSpeechSynthesizer = SpeechSynthesizer.getInstance();
         this.mSpeechSynthesizer.setContext(this);
         this.mSpeechSynthesizer.setSpeechSynthesizerListener(new mySpeechSynthesizerListener());
-        // 文本模型文件路径 (离线引擎使用)
-        this.mSpeechSynthesizer.setParam(SpeechSynthesizer.PARAM_TTS_TEXT_MODEL_FILE, mSampleDirPath + "/"
-                + TEXT_MODEL_NAME);
-        // 声学模型文件路径 (离线引擎使用)
-        this.mSpeechSynthesizer.setParam(SpeechSynthesizer.PARAM_TTS_SPEECH_MODEL_FILE, mSampleDirPath + "/"
-                + SPEECH_FEMALE_MODEL_NAME);
-        // 本地授权文件路径,如未设置将使用默认路径.设置临时授权文件路径，LICENCE_FILE_NAME请替换成临时授权文件的实际路径，仅在使用临时license文件时需要进行设置，如果在[应用管理]中开通了正式离线授权，不需要设置该参数，建议将该行代码删除（离线引擎）
-        // 如果合成结果出现临时授权文件将要到期的提示，说明使用了临时授权文件，请删除临时授权即可。
-        this.mSpeechSynthesizer.setParam(SpeechSynthesizer.PARAM_TTS_LICENCE_FILE, mSampleDirPath + "/"
-                + LICENSE_FILE_NAME);
+//        // 文本模型文件路径 (离线引擎使用)
+//        this.mSpeechSynthesizer.setParam(SpeechSynthesizer.PARAM_TTS_TEXT_MODEL_FILE, mSampleDirPath + "/"
+//                + TEXT_MODEL_NAME);
+//        // 声学模型文件路径 (离线引擎使用)
+//        this.mSpeechSynthesizer.setParam(SpeechSynthesizer.PARAM_TTS_SPEECH_MODEL_FILE, mSampleDirPath + "/"
+//                + SPEECH_FEMALE_MODEL_NAME);
+//        // 本地授权文件路径,如未设置将使用默认路径.设置临时授权文件路径，LICENCE_FILE_NAME请替换成临时授权文件的实际路径，仅在使用临时license文件时需要进行设置，如果在[应用管理]中开通了正式离线授权，不需要设置该参数，建议将该行代码删除（离线引擎）
+//        // 如果合成结果出现临时授权文件将要到期的提示，说明使用了临时授权文件，请删除临时授权即可。
+//        this.mSpeechSynthesizer.setParam(SpeechSynthesizer.PARAM_TTS_LICENCE_FILE, mSampleDirPath + "/"
+//                + LICENSE_FILE_NAME);
         // 请替换为语音开发者平台上注册应用得到的App ID (离线授权)
-        this.mSpeechSynthesizer.setAppId("8535996"/*这里只是为了让Demo运行使用的APPID,请替换成自己的id。*/);
-        // 请替换为语音开发者平台注册应用得到的apikey和secretkey (在线授权)
-        this.mSpeechSynthesizer.setApiKey("MxPpf3nF5QX0pndKKhS7IXcB",
-                "7226e84664474aa098296da5eb2aa434"/*这里只是为了让Demo正常运行使用APIKey,请替换成自己的APIKey*/);
+
         // 发音人（在线引擎），可用参数为0,1,2,3。。。（服务器端会动态增加，各值含义参考文档，以文档说明为准。0--普通女声，1--普通男声，2--特别男声，3--情感男声。。。）
-        this.mSpeechSynthesizer.setParam(SpeechSynthesizer.PARAM_SPEAKER, "0");
+        this.mSpeechSynthesizer.setParam(SpeechSynthesizer.PARAM_SPEAKER, "3");
         // 设置Mix模式的合成策略
         this.mSpeechSynthesizer.setParam(SpeechSynthesizer.PARAM_MIX_MODE, SpeechSynthesizer.MIX_MODE_DEFAULT);
         // 授权检测接口(只是通过AuthInfo进行检验授权是否成功。)
-        // AuthInfo接口用于测试开发者是否成功申请了在线或者离线授权，如果测试授权成功了，可以删除AuthInfo部分的代码（该接口首次验证时比较耗时），不会影响正常使用（合成使用时SDK内部会自动验证授权）
-        AuthInfo authInfo = this.mSpeechSynthesizer.auth(TtsMode.MIX);
-
-        if (authInfo.isSuccess()) {
-            toPrint("auth success");
-        } else {
-            String errorMsg = authInfo.getTtsError().getDetailMessage();
-            toPrint("auth failed errorMsg=" + errorMsg);
-        }
+//        // AuthInfo接口用于测试开发者是否成功申请了在线或者离线授权，如果测试授权成功了，可以删除AuthInfo部分的代码（该接口首次验证时比较耗时），不会影响正常使用（合成使用时SDK内部会自动验证授权）
+//        AuthInfo authInfo = this.mSpeechSynthesizer.auth(TtsMode.MIX);
+//
+//        if (authInfo.isSuccess()) {
+//            toPrint("auth success");
+//        } else {
+//            String errorMsg = authInfo.getTtsError().getDetailMessage();
+//            toPrint("auth failed errorMsg=" + errorMsg);
+//        }
 
         // 初始化tts
         mSpeechSynthesizer.initTts(TtsMode.MIX);
-        // 加载离线英文资源（提供离线英文合成功能）
-        int result =
-                mSpeechSynthesizer.loadEnglishModel(mSampleDirPath + "/" + ENGLISH_TEXT_MODEL_NAME, mSampleDirPath
-                        + "/" + ENGLISH_SPEECH_FEMALE_MODEL_NAME);
-        toPrint("loadEnglishModel result=" + result);
-
-        //打印引擎信息和model基本信息
-        printEngineInfo();
+//        // 加载离线英文资源（提供离线英文合成功能）
+//        int result =
+//                mSpeechSynthesizer.loadEnglishModel(mSampleDirPath + "/" + ENGLISH_TEXT_MODEL_NAME, mSampleDirPath
+//                        + "/" + ENGLISH_SPEECH_FEMALE_MODEL_NAME);
+//        toPrint("loadEnglishModel result=" + result);
+//
+//        //打印引擎信息和model基本信息
+//        printEngineInfo();
     }
 
 
@@ -599,7 +625,7 @@ public class NavActivity extends AppCompatActivity {
 
 
     private void toPrint(String s) {
-        System.out.println(s);
+        Log.d("Nav",s);
     }
 
 
