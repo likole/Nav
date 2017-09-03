@@ -22,7 +22,7 @@
     <string name="login_succeed">登陆成功</string>
     <string name="wakeup_succeed">唤醒成功,您问点什么呢?</string>
     <string name="wakeup_word">您可以说【小度小度】进行唤醒</string>
-    <string name="wakeup_word2">您可以说【鹏杰鹏杰】进行唤醒</string>
+    <string name="wakeup_word2">您可以说【小度小度】进行唤醒</string>
     <string name="goto_chart"> &lt; 进入聊天模式</string>
     <string name="goto_nav">进入导航模式 &gt; </string>
 </resources>

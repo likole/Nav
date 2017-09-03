@@ -62,6 +62,7 @@ public class NavActivity extends AppCompatActivity {
     private TextView tv_log;
 
     private AbstractSlamwarePlatform slamwarePlatform;
+    private SocketThread socketThread;
 
     //-----语音合成-----
     private SpeechSynthesizer mSpeechSynthesizer;
@@ -159,7 +160,7 @@ public class NavActivity extends AppCompatActivity {
                 try {
                     slamwarePlatform = DeviceManager.connect("172.16.42.54", 1445);
                     slamwarePlatform.setSystemParameter(SYSPARAM_ROBOT_SPEED, SYSVAL_ROBOT_SPEED_HIGH);
-                    SocketThread socketThread=new SocketThread(slamwarePlatform,NavActivity.this);
+                    socketThread=new SocketThread(slamwarePlatform,NavActivity.this);
                     socketThread.start();
                 } catch (Exception e) {
                     runOnUiThread(new Runnable() {
@@ -180,6 +181,7 @@ public class NavActivity extends AppCompatActivity {
     protected void onDestroy() {
         speechRecognizer.destroy();
         this.mSpeechSynthesizer.release();
+        if(socketThread!=null) socketThread.interrupt();
         super.onDestroy();
     }
 
@@ -272,12 +274,21 @@ public class NavActivity extends AppCompatActivity {
             JSONObject json_res = new JSONObject(origin_result.getJSONObject("content").getString("json_res"));
             JSONObject result = (JSONObject) json_res.getJSONArray("results").get(0);
             String dest= result.getJSONObject("object").getString("arrival");
-            tv_log.setText("正在前往"+dest);
             speak("即将前往" + result.getJSONObject("object").getString("arrival"));
+            showMessage("正在前往"+dest);
             slamwarePlatform.moveBy(MoveDirection.FORWARD);
         } catch (JSONException e) {
             e.printStackTrace();
         }
+    }
+
+    public void showMessage(final String msg){
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                tv_log.setText(msg);
+            }
+        });
     }
 
 
@@ -517,7 +528,7 @@ public class NavActivity extends AppCompatActivity {
     }
 
 
-    private void speak(String text) {
+    public void speak(String text) {
         int result = this.mSpeechSynthesizer.speak(text);
         if (result < 0) {
             toPrint("error,please look up error code in doc or URL:http://yuyin.baidu.com/docs/tts/122 ");
