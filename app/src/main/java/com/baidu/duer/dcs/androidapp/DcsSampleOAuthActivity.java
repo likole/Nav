@@ -23,12 +23,13 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Toast;
 
-import com.baidu.duer.dcs.R;
 import com.baidu.duer.dcs.oauth.api.BaiduDialog;
 import com.baidu.duer.dcs.oauth.api.BaiduDialogError;
 import com.baidu.duer.dcs.oauth.api.BaiduException;
 import com.baidu.duer.dcs.oauth.api.BaiduOauthImplicitGrant;
 import com.baidu.duer.dcs.util.LogUtil;
+
+import cn.likole.nav.R;
 
 /**
  * 用户认证界面

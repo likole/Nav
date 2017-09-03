@@ -21,10 +21,8 @@ import com.baidu.speech.EventManager;
 import com.baidu.speech.EventManagerFactory;
 import com.baidu.speech.VoiceRecognitionService;
 import com.baidu.tts.client.SpeechError;
-import com.baidu.tts.client.SpeechSynthesizeBag;
 import com.baidu.tts.client.SpeechSynthesizer;
 import com.baidu.tts.client.SpeechSynthesizerListener;
-import com.baidu.tts.client.SynthesizerTool;
 import com.baidu.tts.client.TtsMode;
 import com.slamtec.slamware.AbstractSlamwarePlatform;
 import com.slamtec.slamware.action.MoveDirection;
@@ -99,7 +97,7 @@ public class NavActivity extends AppCompatActivity {
         print("界面绑定完成");
 
         //-----语音合成-----
-        initialEnv();
+//        initialEnv();
         initialTts();
         //-----语音合成-----
 
@@ -146,6 +144,8 @@ public class NavActivity extends AppCompatActivity {
         btn_chart.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
+                Intent intent=new Intent(NavActivity.this, DcsSampleMainActivity.class);
+                startActivity(intent);
                 finish();
             }
         });
@@ -159,7 +159,7 @@ public class NavActivity extends AppCompatActivity {
                 try {
                     slamwarePlatform = DeviceManager.connect("172.16.42.54", 1445);
                     slamwarePlatform.setSystemParameter(SYSPARAM_ROBOT_SPEED, SYSVAL_ROBOT_SPEED_HIGH);
-                    SocketThread socketThread=new SocketThread(slamwarePlatform);
+                    SocketThread socketThread=new SocketThread(slamwarePlatform,NavActivity.this);
                     socketThread.start();
                 } catch (Exception e) {
                     runOnUiThread(new Runnable() {
@@ -262,17 +262,17 @@ public class NavActivity extends AppCompatActivity {
     }
 
     private void printRs(String msg) {
-        try {
-            tv_log.setText(new JSONObject(msg).toString(4));
-        } catch (JSONException e) {
-            e.printStackTrace();
-        }
+//        try {
+//            tv_log.setText(new JSONObject(msg).toString(4));
+//        } catch (JSONException e) {
+//            e.printStackTrace();
+//        }
         try {
             JSONObject origin_result = new JSONObject(msg);
             JSONObject json_res = new JSONObject(origin_result.getJSONObject("content").getString("json_res"));
             JSONObject result = (JSONObject) json_res.getJSONArray("results").get(0);
-
-            tv_log.setText(tv_log.getText() + "\n\n" + result.getJSONObject("object").getString("arrival"));
+            String dest= result.getJSONObject("object").getString("arrival");
+            tv_log.setText("正在前往"+dest);
             speak("即将前往" + result.getJSONObject("object").getString("arrival"));
             slamwarePlatform.moveBy(MoveDirection.FORWARD);
         } catch (JSONException e) {
@@ -493,7 +493,7 @@ public class NavActivity extends AppCompatActivity {
         // 请替换为语音开发者平台上注册应用得到的App ID (离线授权)
 
         // 发音人（在线引擎），可用参数为0,1,2,3。。。（服务器端会动态增加，各值含义参考文档，以文档说明为准。0--普通女声，1--普通男声，2--特别男声，3--情感男声。。。）
-        this.mSpeechSynthesizer.setParam(SpeechSynthesizer.PARAM_SPEAKER, "3");
+        this.mSpeechSynthesizer.setParam(SpeechSynthesizer.PARAM_SPEAKER, "0");
         // 设置Mix模式的合成策略
         this.mSpeechSynthesizer.setParam(SpeechSynthesizer.PARAM_MIX_MODE, SpeechSynthesizer.MIX_MODE_DEFAULT);
         // 授权检测接口(只是通过AuthInfo进行检验授权是否成功。)
@@ -514,23 +514,8 @@ public class NavActivity extends AppCompatActivity {
 //                mSpeechSynthesizer.loadEnglishModel(mSampleDirPath + "/" + ENGLISH_TEXT_MODEL_NAME, mSampleDirPath
 //                        + "/" + ENGLISH_SPEECH_FEMALE_MODEL_NAME);
 //        toPrint("loadEnglishModel result=" + result);
-//
-//        //打印引擎信息和model基本信息
-//        printEngineInfo();
     }
 
-
-    /**
-     * 打印引擎so库版本号及基本信息和model文件的基本信息
-     */
-    private void printEngineInfo() {
-        toPrint("EngineVersioin=" + SynthesizerTool.getEngineVersion());
-        toPrint("EngineInfo=" + SynthesizerTool.getEngineInfo());
-        String textModelInfo = SynthesizerTool.getModelInfo(mSampleDirPath + "/" + TEXT_MODEL_NAME);
-        toPrint("textModelInfo=" + textModelInfo);
-        String speechModelInfo = SynthesizerTool.getModelInfo(mSampleDirPath + "/" + SPEECH_FEMALE_MODEL_NAME);
-        toPrint("speechModelInfo=" + speechModelInfo);
-    }
 
     private void speak(String text) {
         int result = this.mSpeechSynthesizer.speak(text);
@@ -539,14 +524,6 @@ public class NavActivity extends AppCompatActivity {
         }
     }
 
-
-    private SpeechSynthesizeBag getSpeechSynthesizeBag(String text, String utteranceId) {
-        SpeechSynthesizeBag speechSynthesizeBag = new SpeechSynthesizeBag();
-        //需要合成的文本text的长度不能超过1024个GBK字节。
-        speechSynthesizeBag.setText(text);
-        speechSynthesizeBag.setUtteranceId(utteranceId);
-        return speechSynthesizeBag;
-    }
 
     class mySpeechSynthesizerListener implements SpeechSynthesizerListener {
         /*

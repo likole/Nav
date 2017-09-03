@@ -4,7 +4,7 @@ android {
     compileSdkVersion 25
     buildToolsVersion "25.0.2"
     defaultConfig {
-        applicationId "com.baidu.duer.dcs"
+        applicationId "cn.likole.nav"
         minSdkVersion 21
         targetSdkVersion 22
         versionCode 1
@@ -17,7 +17,7 @@ android {
         }
         ndk {
             // 平台
-            abiFilters 'x86', 'x86_64', 'armeabi', 'armeabi-v7a', 'arm64-v8a'
+            abiFilters 'armeabi', 'armeabi-v7a'
         }
     }
     externalNativeBuild {

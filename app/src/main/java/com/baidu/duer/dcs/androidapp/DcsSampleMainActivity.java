@@ -24,10 +24,8 @@ import android.view.View;
 import android.webkit.WebView;
 import android.widget.Button;
 import android.widget.LinearLayout;
-import android.widget.TextView;
 import android.widget.Toast;
 
-import com.baidu.duer.dcs.R;
 import com.baidu.duer.dcs.androidsystemimpl.PlatformFactoryImpl;
 import com.baidu.duer.dcs.androidsystemimpl.webview.BaseWebView;
 import com.baidu.duer.dcs.devicemodule.voiceinput.VoiceInputDeviceModule;
@@ -48,6 +46,7 @@ import com.baidu.duer.dcs.wakeup.WakeUp;
 import java.io.File;
 
 import cn.likole.nav.NavActivity;
+import cn.likole.nav.R;
 
 /**
  * 主界面 activity
@@ -57,15 +56,11 @@ import cn.likole.nav.NavActivity;
 public class DcsSampleMainActivity extends DcsSampleBaseActivity implements View.OnClickListener {
     public static final String TAG = "DcsDemoActivity";
     private Button voiceButton;
-    private TextView textViewTimeStopListen;
-    private Button pauseOrPlayButton;
     private BaseWebView webView;
     private LinearLayout mTopLinearLayout;
     private DcsFramework dcsFramework;
     private DeviceModuleFactory deviceModuleFactory;
     private IPlatformFactory platformFactory;
-    private boolean isPause = true;
-    private long startTimeStopListen;
     private boolean isStopListenReceiving;
     private String mHtmlUrl;
     private Button navButton;
@@ -94,7 +89,6 @@ public class DcsSampleMainActivity extends DcsSampleBaseActivity implements View
         navButton= (Button) findViewById(R.id.navBtn);
         navButton.setOnClickListener(this);
 
-        textViewTimeStopListen = (TextView) findViewById(R.id.id_tv_time_0);
         mTopLinearLayout = (LinearLayout) findViewById(R.id.topLinearLayout);
 
         webView = new BaseWebView(DcsSampleMainActivity.this.getApplicationContext());
@@ -187,29 +181,21 @@ public class DcsSampleMainActivity extends DcsSampleBaseActivity implements View
                     @Override
                     public void onPaused() {
                         super.onPaused();
-                        pauseOrPlayButton.setText(getResources().getString(R.string.audio_paused));
-                        isPause = true;
                     }
 
                     @Override
                     public void onPlaying() {
                         super.onPlaying();
-                        pauseOrPlayButton.setText(getResources().getString(R.string.audio_playing));
-                        isPause = false;
                     }
 
                     @Override
                     public void onCompletion() {
                         super.onCompletion();
-                        pauseOrPlayButton.setText(getResources().getString(R.string.audio_default));
-                        isPause = false;
                     }
 
                     @Override
                     public void onStopped() {
                         super.onStopped();
-                        pauseOrPlayButton.setText(getResources().getString(R.string.audio_default));
-                        isPause = true;
                     }
                 });
 
@@ -261,8 +247,6 @@ public class DcsSampleMainActivity extends DcsSampleBaseActivity implements View
         wakeUp.startWakeUp();
         isStopListenReceiving = false;
         voiceButton.setText(getResources().getString(R.string.stop_record));
-        long t = System.currentTimeMillis() - startTimeStopListen;
-        textViewTimeStopListen.setText(getResources().getString(R.string.time_record, t));
     }
 
     private void startRecording() {
@@ -270,7 +254,6 @@ public class DcsSampleMainActivity extends DcsSampleBaseActivity implements View
         isStopListenReceiving = true;
         deviceModuleFactory.getSystemProvider().userActivity();
         voiceButton.setText(getResources().getString(R.string.start_record));
-        textViewTimeStopListen.setText("");
     }
 
     @Override
@@ -292,13 +275,13 @@ public class DcsSampleMainActivity extends DcsSampleBaseActivity implements View
                     return;
                 }
                 isStopListenReceiving = true;
-                startTimeStopListen = System.currentTimeMillis();
                 platformFactory.getVoiceInput().startRecord();
                 doUserActivity();
                 break;
             case R.id.navBtn:
                 Intent intent=new Intent(DcsSampleMainActivity.this,NavActivity.class);
                 startActivity(intent);
+                this.finish();
            /* case R.id.openLogBtn:
                 openAssignFolder(FileUtil.getLogFilePath());
                 break;*/

@@ -20,9 +20,10 @@ import android.os.Bundle;
 import android.webkit.WebView;
 import android.widget.RelativeLayout;
 
-import com.baidu.duer.dcs.R;
 import com.baidu.duer.dcs.androidsystemimpl.webview.BaseWebView;
 import com.baidu.duer.dcs.devicemodule.screen.message.HtmlPayload;
+
+import cn.likole.nav.R;
 
 /**
  * show html UI.
