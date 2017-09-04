@@ -17,45 +17,86 @@ public class SocketThread extends Thread {
     Client client;
     NavActivity activity;
     AbstractSlamwarePlatform abstractSlamwarePlatform;
+    SlamThread slamThread;
 
-    SocketThread(AbstractSlamwarePlatform abstractSlamwarePlatform, NavActivity activity){
-        this.abstractSlamwarePlatform=abstractSlamwarePlatform;
-        this.activity=activity;
+    SocketThread(AbstractSlamwarePlatform abstractSlamwarePlatform, NavActivity activity) {
+        this.abstractSlamwarePlatform = abstractSlamwarePlatform;
+        this.activity = activity;
     }
 
     @Override
     public void run() {
-        client=new Client();
-        Log.d("Nav","socket启动完毕");
-        client.setListener(new Client.Listener(){
+        client = new Client();
+        Log.d("Nav", "socket启动完毕");
 
+        client.setListener(new Client.Listener() {
+
+            @SuppressWarnings("deprecation")
             @Override
             public void update(String msg) {
-                Log.d("Nav",msg);
-                if("l".equals(msg)) abstractSlamwarePlatform.moveBy(MoveDirection.TURN_LEFT);
-                else if("r".equals(msg)) abstractSlamwarePlatform.moveBy(MoveDirection.TURN_RIGHT);
-                else if("fd".equals(msg)) abstractSlamwarePlatform.moveBy(MoveDirection.FORWARD);
-                else if("bk".equals(msg)) abstractSlamwarePlatform.moveBy(MoveDirection.BACKWARD);
-                else if("reset".equals(msg)) {
-                    abstractSlamwarePlatform.clearMap();
-                    abstractSlamwarePlatform.setPose(new Pose(new Location(0,0,0),new Rotation(0)));
-                }else{
-                    try{
-                        int x= Integer.parseInt(msg.substring(0,msg.indexOf(':')));
-                        int y= Integer.parseInt(msg.substring(msg.indexOf(':')+1));
-                        abstractSlamwarePlatform.moveTo(new Location(x,y,0));
-                    }catch (Exception e) {
-                       activity.showMessage("ERROR");
-                        activity.speak("沈鹏杰臭傻逼");
-                    }
+                Log.d("Nav", msg);
+                switch (msg) {
+
+                    case "l":
+                        abstractSlamwarePlatform.moveBy(MoveDirection.TURN_LEFT);
+                        break;
+
+                    case "r":
+                        abstractSlamwarePlatform.moveBy(MoveDirection.TURN_RIGHT);
+                        break;
+
+                    case "fd":
+                        abstractSlamwarePlatform.moveBy(MoveDirection.FORWARD);
+                        break;
+
+                    case "bk":
+                        abstractSlamwarePlatform.moveBy(MoveDirection.BACKWARD);
+                        break;
+
+                    case "reset":
+                        clear();
+                        abstractSlamwarePlatform.clearMap();
+                        abstractSlamwarePlatform.setPose(new Pose(new Location(0, 0, 0), new Rotation(0)));
+                        break;
+
+                    case "ok":
+                        activity.changeMessage("已到达目的地");
+                        activity.speak("已到达目的地,本次导航结束");
+                        break;
+
+                    case "clear":
+                        clear();
+                        break;
+
+                    default:
+                        try {
+                            int x = Integer.parseInt(msg.substring(0, msg.indexOf(':')));
+                            int y = Integer.parseInt(msg.substring(msg.indexOf(':') + 1));
+                            clear();
+//                        abstractSlamwarePlatform.moveTo(new Location(x,y,0));
+
+
+                            slamThread = new SlamThread(abstractSlamwarePlatform, x, y);
+                            slamThread.start();
+
+                        } catch (Exception e) {
+                            activity.showMessage("ERROR");
+                            activity.speak("ERROR");
+                        }
                 }
-
-
-
             }
         });
 
         client.getServerMsg();
+    }
 
+    public void clear() {
+        if (slamThread != null) {
+            try {
+                slamThread.stop();
+            } catch (Exception e) {
+            }
+            slamThread = null;
+        }
     }
 }

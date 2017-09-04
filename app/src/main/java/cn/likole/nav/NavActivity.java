@@ -6,6 +6,7 @@ import android.content.Intent;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.Handler;
 import android.speech.RecognitionListener;
 import android.speech.SpeechRecognizer;
 import android.support.v7.app.AppCompatActivity;
@@ -77,6 +78,8 @@ public class NavActivity extends AppCompatActivity {
     private static final String ENGLISH_TEXT_MODEL_NAME = "bd_etts_text_en.dat";
     //-----语音合成-----
 
+    private String message;
+    private Handler handler;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -96,6 +99,24 @@ public class NavActivity extends AppCompatActivity {
         tv_log = (TextView) findViewById(R.id.textView);
 
         print("界面绑定完成");
+
+        //连接小车
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    slamwarePlatform = DeviceManager.connect("172.16.42.54", 1445);
+                    slamwarePlatform.setSystemParameter(SYSPARAM_ROBOT_SPEED, SYSVAL_ROBOT_SPEED_HIGH);
+                    socketThread = new SocketThread(slamwarePlatform, NavActivity.this);
+                    socketThread.start();
+                    changeMessage("已成功连接到小车");
+                } catch (Exception e) {
+                    changeMessage("无法连接到小车");
+                }
+            }
+        }).start();
+
+        print("启动小车OK");
 
         //-----语音合成-----
 //        initialEnv();
@@ -145,7 +166,7 @@ public class NavActivity extends AppCompatActivity {
         btn_chart.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                Intent intent=new Intent(NavActivity.this, DcsSampleMainActivity.class);
+                Intent intent = new Intent(NavActivity.this, DcsSampleMainActivity.class);
                 startActivity(intent);
                 finish();
             }
@@ -153,27 +174,8 @@ public class NavActivity extends AppCompatActivity {
 
         print("模式切换OK");
 
-        //连接小车
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    slamwarePlatform = DeviceManager.connect("172.16.42.54", 1445);
-                    slamwarePlatform.setSystemParameter(SYSPARAM_ROBOT_SPEED, SYSVAL_ROBOT_SPEED_HIGH);
-                    socketThread=new SocketThread(slamwarePlatform,NavActivity.this);
-                    socketThread.start();
-                } catch (Exception e) {
-                    runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            tv_log.setText("无法连接到小车");
-                        }
-                    });
-                }
-            }
-        }).start();
-
-        print("启动小车OK");
+        handler = new Handler();
+        handler.postDelayed(messageUpdate, 100);
 
     }
 
@@ -181,7 +183,7 @@ public class NavActivity extends AppCompatActivity {
     protected void onDestroy() {
         speechRecognizer.destroy();
         this.mSpeechSynthesizer.release();
-        if(socketThread!=null) socketThread.interrupt();
+        if (socketThread != null) socketThread.interrupt();
         super.onDestroy();
     }
 
@@ -273,22 +275,33 @@ public class NavActivity extends AppCompatActivity {
             JSONObject origin_result = new JSONObject(msg);
             JSONObject json_res = new JSONObject(origin_result.getJSONObject("content").getString("json_res"));
             JSONObject result = (JSONObject) json_res.getJSONArray("results").get(0);
-            String dest= result.getJSONObject("object").getString("arrival");
+            String dest = result.getJSONObject("object").getString("arrival");
             speak("即将前往" + result.getJSONObject("object").getString("arrival"));
-            showMessage("正在前往"+dest);
+            showMessage("即将前往" + dest);
+            message = "正在前往" + dest;
             slamwarePlatform.moveBy(MoveDirection.FORWARD);
         } catch (JSONException e) {
             e.printStackTrace();
         }
     }
 
-    public void showMessage(final String msg){
+    public void showMessage(final String msg) {
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
                 tv_log.setText(msg);
             }
         });
+    }
+
+    public void changeMessage(final String msg) {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                tv_log.setText(msg);
+            }
+        });
+        message = msg;
     }
 
 
@@ -367,9 +380,8 @@ public class NavActivity extends AppCompatActivity {
             ArrayList<String> nbest = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
             print("识别成功：" + Arrays.toString(nbest.toArray(new String[nbest.size()])));
             String json_res = results.getString("origin_result");
-            if (json_res.contains("进入聊天模式"))
-            {
-                Intent intent=new Intent(NavActivity.this, DcsSampleMainActivity.class);
+            if (json_res.contains("进入聊天模式")) {
+                Intent intent = new Intent(NavActivity.this, DcsSampleMainActivity.class);
                 startActivity(intent);
                 finish();
             }
@@ -501,7 +513,6 @@ public class NavActivity extends AppCompatActivity {
 //        // 如果合成结果出现临时授权文件将要到期的提示，说明使用了临时授权文件，请删除临时授权即可。
 //        this.mSpeechSynthesizer.setParam(SpeechSynthesizer.PARAM_TTS_LICENCE_FILE, mSampleDirPath + "/"
 //                + LICENSE_FILE_NAME);
-        // 请替换为语音开发者平台上注册应用得到的App ID (离线授权)
 
         // 发音人（在线引擎），可用参数为0,1,2,3。。。（服务器端会动态增加，各值含义参考文档，以文档说明为准。0--普通女声，1--普通男声，2--特别男声，3--情感男声。。。）
         this.mSpeechSynthesizer.setParam(SpeechSynthesizer.PARAM_SPEAKER, "0");
@@ -613,11 +624,20 @@ public class NavActivity extends AppCompatActivity {
 
 
     private void toPrint(String s) {
-        Log.d("Nav",s);
+        Log.d("Nav", s);
     }
 
 
     //====================
     //上面的是语音合成部分
     //=====================
+
+    //定时更新消息
+    private Runnable messageUpdate = new Runnable() {
+        @Override
+        public void run() {
+            showMessage(message);
+            handler.postDelayed(messageUpdate, 5000);
+        }
+    };
 }

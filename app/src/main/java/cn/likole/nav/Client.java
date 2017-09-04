@@ -19,8 +19,8 @@ public class Client {
     public Client() {
         //设置服务器IP，绑定端口
         try {
-            socket = new Socket(URL,port);
-            Log.d("Nav","连接完成！");
+            socket = new Socket(URL, port);
+            Log.d("Nav", "连接完成！");
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -35,16 +35,15 @@ public class Client {
     }
 
 
-
-    public void sendMessage(){
+    public void sendMessage() {
 
         try {
             //向服务器发送数据
             //初始化输出流 用来向服务器传递数据
-            if(socket.isOutputShutdown()){
+            if (socket.isOutputShutdown()) {
                 System.err.println("OutputStream 被关闭");
             }
-            printWriter = new PrintWriter(socket.getOutputStream(),true);
+            printWriter = new PrintWriter(socket.getOutputStream(), true);
 
             printWriter.println(msg);
             //清空缓冲区的数据流  数据流向：内存->缓冲区->文件（或输出），如果不用.flush()，可能缓冲区内部还有数据残留，.flush()会将缓冲区内部的数据强制输出
@@ -54,22 +53,24 @@ public class Client {
         }
     }
 
-    public interface Listener{
+    public interface Listener {
         void update(String msg);
     }
+
     private Listener listener;
-    public void setListener(Listener l){
+
+    public void setListener(Listener l) {
         this.listener = l;
     }
 
-    public void getServerMsg(){
+    public void getServerMsg() {
         //接收服务器数据
         //初始化输入流 用来获取服务器下发的数据
         try {
             bufferedReader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
             String reply = null;
 
-            while(!((reply = bufferedReader.readLine()) ==null)){
+            while (!((reply = bufferedReader.readLine()) == null)) {
                 System.out.println("服务器发送的数据为：" + reply);
                 listener.update(reply);
             }
