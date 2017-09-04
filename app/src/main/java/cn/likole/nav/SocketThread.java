@@ -75,13 +75,12 @@ public class SocketThread extends Thread {
                             clear();
 //                        abstractSlamwarePlatform.moveTo(new Location(x,y,0));
 
-
                             slamThread = new SlamThread(abstractSlamwarePlatform, x, y);
                             slamThread.start();
 
                         } catch (Exception e) {
-                            activity.showMessage("ERROR");
-                            activity.speak("ERROR");
+                            activity.showMessage("未知错误");
+                            activity.speak("未知错误");
                         }
                 }
             }
@@ -92,11 +91,8 @@ public class SocketThread extends Thread {
 
     public void clear() {
         if (slamThread != null) {
-            try {
-                slamThread.stop();
-            } catch (Exception e) {
-            }
-            slamThread = null;
+            slamThread.setExit(true);
+            slamThread=null;
         }
     }
 }
