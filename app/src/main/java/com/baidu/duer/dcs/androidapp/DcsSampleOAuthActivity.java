@@ -15,7 +15,9 @@
  */
 package com.baidu.duer.dcs.androidapp;
 
+import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.view.View;
@@ -45,6 +47,7 @@ public class DcsSampleOAuthActivity extends DcsSampleBaseActivity implements Vie
     // 是否每次都确认登陆
     private boolean isConfirmLogin = true;
     private EditText editTextClientId;
+    private EditText editTextSlamIp;
     private Button oauthLoginButton;
     private BaiduOauthImplicitGrant baiduOauthImplicitGrant;
 
@@ -53,6 +56,8 @@ public class DcsSampleOAuthActivity extends DcsSampleBaseActivity implements Vie
         super.onCreate(savedInstanceState);
         setContentView(R.layout.dcs_sample_activity_oauth);
         initView();
+        SharedPreferences preferences=getSharedPreferences("Nav", Context.MODE_PRIVATE);
+        editTextSlamIp.setText(preferences.getString("ip","192.168.11.1"));
         setOnClickListener();
     }
 
@@ -62,6 +67,7 @@ public class DcsSampleOAuthActivity extends DcsSampleBaseActivity implements Vie
 
     private void initView() {
         editTextClientId = (EditText) findViewById(R.id.edit_client_id);
+        editTextClientId= (EditText) findViewById(R.id.edit_slam_ip);
         oauthLoginButton = (Button) findViewById(R.id.btn_login);
 
         editTextClientId.setText(CLIENT_ID);
@@ -72,6 +78,11 @@ public class DcsSampleOAuthActivity extends DcsSampleBaseActivity implements Vie
         switch (view.getId()) {
             case R.id.btn_login:
                 String clientId = editTextClientId.getText().toString();
+                SharedPreferences preferences=getSharedPreferences("Nav", Context.MODE_PRIVATE);
+                SharedPreferences.Editor editor = preferences.edit();
+                editor.putString("ip", editTextSlamIp.getText().toString());
+
+                editor.commit();//提交修改
                 if (!TextUtils.isEmpty(clientId) && !TextUtils.isEmpty(clientId)) {
                     baiduOauthImplicitGrant = new BaiduOauthImplicitGrant(clientId, DcsSampleOAuthActivity.this.getApplication());
                     baiduOauthImplicitGrant.authorize(DcsSampleOAuthActivity.this, isForceLogin, isConfirmLogin, new BaiduDialog

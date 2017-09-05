@@ -18,6 +18,7 @@
     <string name="open_log">打开日志</string>
     <string name="login">登陆</string>
     <string name="client_id">您应用的client_id</string>
+    <string name="slam_ip">小车的IP地址</string>
     <string name="client_id_empty">请输入您申请的client_id</string>
     <string name="login_succeed">登陆成功</string>
     <string name="wakeup_succeed">唤醒成功,您问点什么呢?</string>

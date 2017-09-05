@@ -2,7 +2,9 @@ package cn.likole.nav;
 
 import android.Manifest;
 import android.content.ComponentName;
+import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
@@ -105,7 +107,8 @@ public class NavActivity extends AppCompatActivity {
             @Override
             public void run() {
                 try {
-                    slamwarePlatform = DeviceManager.connect("172.16.42.54", 1445);
+                    SharedPreferences preferences=getSharedPreferences("Nav", Context.MODE_PRIVATE);
+                    slamwarePlatform = DeviceManager.connect(preferences.getString("ip","192.168.11.1"), 1445);
                     slamwarePlatform.setSystemParameter(SYSPARAM_ROBOT_SPEED, SYSVAL_ROBOT_SPEED_HIGH);
                     socketThread = new SocketThread(slamwarePlatform, NavActivity.this);
                     socketThread.start();
