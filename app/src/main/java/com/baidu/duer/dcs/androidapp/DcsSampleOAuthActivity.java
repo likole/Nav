@@ -67,7 +67,7 @@ public class DcsSampleOAuthActivity extends DcsSampleBaseActivity implements Vie
 
     private void initView() {
         editTextClientId = (EditText) findViewById(R.id.edit_client_id);
-        editTextClientId= (EditText) findViewById(R.id.edit_slam_ip);
+        editTextSlamIp= (EditText) findViewById(R.id.edit_slam_ip);
         oauthLoginButton = (Button) findViewById(R.id.btn_login);
 
         editTextClientId.setText(CLIENT_ID);

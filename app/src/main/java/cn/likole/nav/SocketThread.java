@@ -92,7 +92,7 @@ public class SocketThread extends Thread {
     public void clear() {
         if (slamThread != null) {
             slamThread.setExit(true);
-            slamThread=null;
+            slamThread = null;
         }
     }
 }

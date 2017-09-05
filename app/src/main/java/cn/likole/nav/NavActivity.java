@@ -28,8 +28,8 @@ import com.baidu.tts.client.SpeechSynthesizer;
 import com.baidu.tts.client.SpeechSynthesizerListener;
 import com.baidu.tts.client.TtsMode;
 import com.slamtec.slamware.AbstractSlamwarePlatform;
-import com.slamtec.slamware.action.MoveDirection;
 import com.slamtec.slamware.discovery.DeviceManager;
+import com.slamtec.slamware.robot.Location;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -42,6 +42,7 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 
 import static com.slamtec.slamware.robot.SystemParameters.SYSPARAM_ROBOT_SPEED;
 import static com.slamtec.slamware.robot.SystemParameters.SYSVAL_ROBOT_SPEED_HIGH;
@@ -83,6 +84,12 @@ public class NavActivity extends AppCompatActivity {
     private String message;
     private Handler handler;
 
+    private int STATUS_NAVING = 0;
+    private int STATUS_MANUAL = 1;
+    private int nav_status = STATUS_MANUAL;
+
+    private List<Location> locationList;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -107,8 +114,8 @@ public class NavActivity extends AppCompatActivity {
             @Override
             public void run() {
                 try {
-                    SharedPreferences preferences=getSharedPreferences("Nav", Context.MODE_PRIVATE);
-                    slamwarePlatform = DeviceManager.connect(preferences.getString("ip","192.168.11.1"), 1445);
+                    SharedPreferences preferences = getSharedPreferences("Nav", Context.MODE_PRIVATE);
+                    slamwarePlatform = DeviceManager.connect(preferences.getString("ip", "192.168.11.1"), 1445);
                     slamwarePlatform.setSystemParameter(SYSPARAM_ROBOT_SPEED, SYSVAL_ROBOT_SPEED_HIGH);
                     socketThread = new SocketThread(slamwarePlatform, NavActivity.this);
                     socketThread.start();
@@ -179,7 +186,7 @@ public class NavActivity extends AppCompatActivity {
 
         handler = new Handler();
         handler.postDelayed(messageUpdate, 100);
-
+        handler.postDelayed(nav, 100);
     }
 
     @Override
@@ -264,6 +271,7 @@ public class NavActivity extends AppCompatActivity {
 
 
     private void print(String msg) {
+
         Log.d("Nav", "----" + msg);
         //tv_log.setText(tv_log.getText() + "\n" + msg);
     }
@@ -279,10 +287,15 @@ public class NavActivity extends AppCompatActivity {
             JSONObject json_res = new JSONObject(origin_result.getJSONObject("content").getString("json_res"));
             JSONObject result = (JSONObject) json_res.getJSONArray("results").get(0);
             String dest = result.getJSONObject("object").getString("arrival");
+
+            //开始导航
             speak("即将前往" + result.getJSONObject("object").getString("arrival"));
+            locationList = NavManager.getLocations(dest);
             showMessage("即将前往" + dest);
             message = "正在前往" + dest;
-            slamwarePlatform.moveBy(MoveDirection.FORWARD);
+            nav_status = STATUS_NAVING;
+
+
         } catch (JSONException e) {
             e.printStackTrace();
         }
@@ -383,12 +396,47 @@ public class NavActivity extends AppCompatActivity {
             ArrayList<String> nbest = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
             print("识别成功：" + Arrays.toString(nbest.toArray(new String[nbest.size()])));
             String json_res = results.getString("origin_result");
+
+
+            //特殊命令处理
             if (json_res.contains("进入聊天模式")) {
                 Intent intent = new Intent(NavActivity.this, DcsSampleMainActivity.class);
                 startActivity(intent);
                 finish();
             }
 
+            if (json_res.contains("暂停导航")) {
+                if (locationList != null && locationList.size() > 0) {
+                    nav_status = STATUS_MANUAL;
+                    showMessage("导航已暂停");
+                    speak("导航已暂停");
+                } else {
+                    showMessage("当前没有导航任务");
+                    speak("当前没有导航任务");
+                }
+
+            } else if (json_res.contains("停止导航")) {
+                if (locationList != null && locationList.size() > 0) {
+                    nav_status = STATUS_MANUAL;
+                    changeMessage("导航已停止");
+                    speak("导航已停止");
+                    locationList = null;
+                } else {
+                    showMessage("当前没有导航任务");
+                    speak("当前没有导航任务");
+                }
+            } else if (json_res.contains("继续导航")) {
+                if (locationList != null && locationList.size() > 0) {
+                    nav_status = STATUS_NAVING;
+                    showMessage("导航继续");
+                    speak("导航继续");
+                } else {
+                    showMessage("当前没有导航任务");
+                    speak("当前没有导航任务");
+                }
+            }
+
+            //尝试导航命令
             try {
                 print("origin_result=\n" + new JSONObject(json_res).toString(4));
                 printRs(json_res);
@@ -642,6 +690,30 @@ public class NavActivity extends AppCompatActivity {
         public void run() {
             showMessage(message);
             handler.postDelayed(messageUpdate, 5000);
+        }
+    };
+
+    private Runnable nav = new Runnable() {
+        @Override
+        public void run() {
+            try {
+                if (nav_status == STATUS_NAVING && locationList != null && locationList.size() > 0) {
+                    Location location = slamwarePlatform.getLocation();
+
+                    float x = locationList.get(0).getX();
+                    float y = locationList.get(0).getY();
+
+                    if (Math.sqrt(x - location.getX()) * (x - location.getX()) + (y - location.getY()) * (y - location.getY()) < 0.7) {
+                        locationList.remove(0);
+                    }
+
+                    slamwarePlatform.moveTo(new Location(x, y, 0));
+
+                }
+            } catch (Exception e) {
+
+            }
+            handler.postDelayed(nav, 3000);
         }
     };
 }
